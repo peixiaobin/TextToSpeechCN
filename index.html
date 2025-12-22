@@ -2,16 +2,91 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Edge浏览器TTS,去掉了文字中的空格</title>
+<title>Edge 文字转语音</title>
 <style>
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+    background-color: #f0f2f5;
+}
 #text-container {
-font-size: 14px;
-max-width: 2000px;
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: 2000px;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    min-height: 60px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 #input-box {
-width: 100%;
-height: 100px;
-resize: vertical;
+    width: 100%;
+    height: 120px;
+    resize: vertical;
+    display: block;
+    margin-bottom: 15px;
+    padding: 15px;
+    font-family: inherit;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.btn {
+    padding: 10px 25px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    transition: background-color 0.2s, transform 0.1s;
+    color: white;
+    font-weight: 500;
+}
+.btn:active {
+    transform: scale(0.98);
+}
+.btn-primary {
+    background-color: #0078d4;
+}
+.btn-primary:hover {
+    background-color: #005a9e;
+}
+.btn-success {
+    background-color: #107c10;
+}
+.btn-success:hover {
+    background-color: #0b5a0b;
+}
+.options {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    margin-left: auto;
+}
+label {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+    color: #333;
+}
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
 }
 </style>
 </head>
@@ -19,18 +94,65 @@ resize: vertical;
 
 <div id="text-container">请在输入框写入文字</div>
 
-<form>
-<textarea id="input-box"></textarea>
-<button type="button" onclick="replaceText()">提交</button>
+<form onsubmit="event.preventDefault(); submitText();">
+    <textarea id="input-box" placeholder="在此输入文字..."></textarea>
+    
+    <div class="controls">
+        <button type="button" class="btn btn-success" onclick="pasteAndSubmit()">粘贴并提交</button>
+        <button type="button" class="btn btn-primary" onclick="submitText()">提交</button>
+        
+        <div class="options">
+            <label title="去除所有空格">
+                <input type="checkbox" id="remove-spaces"> 去除空格
+            </label>
+            <label title="去除 * # @ & % $ ^ + = | \ < > ~ 以及它们的全角版本">
+                <input type="checkbox" id="remove-symbols"> 去除符号
+            </label>
+        </div>
+    </div>
 </form>
 
 <script>
-function replaceText() {
-  var inputText = document.getElementById("input-box").value;
-  // 使用正则表达式去除空格和"*"
-  var processedText = inputText.replace(/[* ]/g, ""); 
-  document.getElementById("text-container").innerHTML = processedText;
-  document.getElementById("input-box").value = "";
+function processText(text) {
+    var shouldRemoveSpaces = document.getElementById("remove-spaces").checked;
+    var shouldRemoveSymbols = document.getElementById("remove-symbols").checked;
+    
+    var processedText = text;
+    
+    if (shouldRemoveSpaces) {
+        // 去除所有空格 (包含半角空格、全角空格、制表符等)
+        processedText = processedText.replace(/\s+/g, ""); 
+    }
+    
+    if (shouldRemoveSymbols) {
+        // 去除特殊符号逻辑优化：
+        // 1. 半角符号: * # @ $ % ^ & + = | \ / < > ~ ` _ [ ] { }
+        // 2. 全角符号(中文输入法常见): ＊ ＃ ＠ ＄ ％ ︿ ＆ ＋ ＝ ｜ ＼ ／ ＜ ＞ ～ ｀ ＿ ［ ］ ｛ ｝
+        // 3. 其他干扰符: ￥
+        // 注意：保留了标点符号 (,.?!;:'" 以及对应的全角 ，。？！；：‘“等) 以保证朗读停顿
+        
+        var regex = /[*#@$%^&+=|\\/<>~`_[\]{}＊＃＠＄％︿＆＋＝｜＼／＜＞～｀＿［］｛｝￥]/g;
+        processedText = processedText.replace(regex, "");
+    }
+    
+    // 更新内容，使用 innerText 防止 HTML 注入，但保留换行
+    document.getElementById("text-container").innerText = processedText;
+    document.getElementById("input-box").value = "";
+}
+
+function submitText() {
+    var inputText = document.getElementById("input-box").value;
+    processText(inputText);
+}
+
+async function pasteAndSubmit() {
+    try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById("input-box").value = text; // 视觉反馈
+        processText(text);
+    } catch (err) {
+        alert('无法读取剪贴板，请尝试手动粘贴。错误: ' + err);
+    }
 }
 </script>
 
